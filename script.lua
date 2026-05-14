@@ -1,84 +1,61 @@
--- FIX LAG ULTRA SAFE MAX (GIỮ NGUYÊN MAP, XÓA VẬT PHỤ + HIỆU ỨNG)
--- by ChatGPT
+-- OPTIMIZER v1.0 (No GUI)
+local Lighting = game:GetService("Lighting")
+local Terrain = game:GetService("Workspace").Terrain
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
-getgenv().FixLagUltraSafeMax = function()
-    local Workspace = game:GetService("Workspace")
-    local Lighting = game:GetService("Lighting")
-
-    -- ===== 1. Xóa ~200 hiệu ứng =====
-    for _,v in ipairs(game:GetDescendants()) do
-        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire")
-        or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("Highlight") or v:IsA("ForceField")
-        or v:IsA("Explosion") or v:IsA("SpecialMesh") or v:IsA("MeshPart") or v:IsA("UnionOperation")
-        or v:IsA("WedgePart") or v:IsA("CornerWedgePart") or v:IsA("Decal") or v:IsA("Texture")
-        or v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight")
-        or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect")
-        or v:IsA("ColorCorrectionEffect") or v:IsA("DepthOfFieldEffect") then
-            pcall(function() v:Destroy() end)
-        end
-    end
-
-    -- ===== 2. Xóa vật phụ nhưng giữ nền đảo =====
-    for _,v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") then
-            -- Nếu Parent là map chính / kap / nền → giữ lại
-            if v.Parent.Name:lower():find("map") or v.Parent.Name:lower():find("island") then
-                -- giữ nền
-            else
-                local name = v.Name:lower()
-                if name:find("tree") or name:find("leaf") or name:find("grass") or name:find("wood")
-                or name:find("rock") or name:find("stone") or name:find("metal") or name:find("iron")
-                or name:find("glass") or name:find("brick") or name:find("cobble") then
-                    pcall(function() v:Destroy() end)
-                end
-            end
-        end
-        if v:IsA("Model") then
-            pcall(function() v:Destroy() end)
-        end
-    end
-
-    -- ===== 3. Vật liệu + độ họa cực khô =====
-    for _,v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Material = Enum.Material.Plastic
-            v.CastShadow = false
-            v.Reflectance = 0
-            v.Transparency = 0
-        end
-    end
-
-    -- ===== 4. Tắt đồ họa =====
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-
-    -- ===== 5. Tắt ánh sáng cực khô =====
+-- 1. Tối ưu đồ họa & Xóa vật thể thừa
+local function Optimize()
+    -- Tắt hiệu ứng ánh sáng
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 9e9
-    Lighting.Brightness = 0
-    Lighting.ExposureCompensation = 0
-    Lighting.OutdoorAmbient = Color3.fromRGB(0,0,0)
-    Lighting.Technology = Enum.Technology.Compatibility
-
-    for _,v in ipairs(Lighting:GetDescendants()) do
-        if v:IsA("Sky") or v:IsA("BloomEffect") or v:IsA("BlurEffect")
-        or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("DepthOfFieldEffect") then
-            pcall(function() v:Destroy() end)
+    Lighting.Brightness = 1
+    
+    -- Xóa effect/Sky/Clouds
+    for _, child in pairs(Lighting:GetChildren()) do
+        if child:IsA("PostProcessEffect") or child:IsA("Sky") or child:IsA("Clouds") then
+            child:Destroy()
         end
     end
-
-    -- ===== 6. Tắt nước =====
-    local terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if terrain then
-        pcall(function()
-            terrain.WaterWaveSize = 0
-            terrain.WaterWaveSpeed = 0
-            terrain.WaterReflectance = 0
-            terrain.WaterTransparency = 1
-        end)
+    
+    -- Tắt vật liệu nước/trang trí
+    Terrain.WaterWaveSize = 0
+    Terrain.WaterWaveSpeed = 0
+    Terrain.WaterReflectance = 0
+    Terrain.WaterTransparency = 0
+    
+    -- Giảm chất lượng đồ họa
+    settings().Rendering.QualityLevel = 1
+    
+    -- Quét và xóa vật thể rác/cây cối
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") then
+            obj.Material = Enum.Material.Plastic
+            obj.Reflectance = 0
+            
+            local name = obj.Name:lower()
+            if name:find("tree") or name:find("leaf") or name:find("bush") or name:find("grass") then
+                obj:Destroy()
+            end
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") then
+            obj.Enabled = false
+        end
     end
 end
 
--- Chạy ngay
-getgenv().FixLagUltraSafeMax()
+-- 2. Unlock 120 FPS
+if setfpscap then
+    setfpscap(120)
+end
+
+-- 3. Camera Mượt (Sensitivity 200)
+UserInputService.MouseDeltaSensitivity = 2.0
+local camera = workspace.CurrentCamera
+if camera then
+    camera.FieldOfView = 80
+end
+
+-- Thực thi
+Optimize()
+
+print("Optimization complete: FPS unlocked, objects removed, settings optimized.")
