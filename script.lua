@@ -1,60 +1,235 @@
--- GUI Toggle & Fast Run Script (Force Push 60)
-local Player = game.Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+-- 1. Khởi tạo DUY NHẤT MỘT LẦN
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({Name = "KRP HUB", LoadingTitle = "ĐANG TẢI...", LoadingSubtitle = "ĐÃ TẢI XONG"})
 
--- Tạo ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FastRunGui"
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
+-- 2. Tạo Tab 1
+local Tab = Window:CreateTab("HỆ THỐNG", nil)
 
--- Menu chính (Bo tròn & Zero Gap)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 150, 0, 50)
-MainFrame.Position = UDim2.new(0.5, -75, 0.8, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
+-- --- PHẦN NO HOLD ---
+local ProximityService = game:GetService("ProximityPromptService")
+local isNoHoldEnabled = false
 
--- Bo tròn góc (UICorner)
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = Tool.UDim.new(0, 10) -- Bo tròn theo ý thích
-UICorner.Parent = MainFrame
+Tab:CreateToggle({
+Name = "No Hold (Bỏ giữ)",
+CurrentValue = false,
+Callback = function(Value)
+isNoHoldEnabled = Value
+end,
+})
 
--- Nút bấm Chạy Nhanh (Lực đẩy 60)
-local FastRunBtn = Instance.new("TextButton")
-FastRunBtn.Name = "FastRunBtn"
-FastRunBtn.Size = UDim2.new(1, 0, 1, 0) -- Zero Gap (Lấp đầy Frame)
-FastRunBtn.BackgroundTransparency = 1
-FastRunBtn.Text = "FORCE PUSH (60)"
-FastRunBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FastRunBtn.Font = Enum.Font.GothamBold
-FastRunBtn.TextSize = 14
-FastRunBtn.Parent = MainFrame
+ProximityService.PromptButtonHoldBegan:Connect(function(prompt)
+if isNoHoldEnabled then prompt.HoldDuration = 0 end
+end)
 
--- Hàm xử lý lực đẩy
-local function ApplyForce()
-    local BV = Instance.new("BodyVelocity")
-    BV.MaxForce = Vector3.new(100000, 0, 100000) -- Chỉ đẩy theo phương ngang
-    BV.Velocity = HumanoidRootPart.CFrame.LookVector * 60 -- Lực đẩy tới 60
-    BV.Parent = HumanoidRootPart
-    
-    wait(0.1) -- Thời gian đẩy ngắn để tạo cảm giác lướt
-    BV:Destroy()
+-- --- PHẦN DASH TOOL ---
+local function GiveDashTool()
+local player = game.Players.LocalPlayer
+local backpack = player.Backpack
+local char = player.Character
+if backpack:FindFirstChild("Dash Tool") then backpack["Dash Tool"]:Destroy() end
+if char and char:FindFirstChild("Dash Tool") then char["Dash Tool"]:Destroy() end
+
+local tool = Instance.new("Tool")  
+tool.Name = "Dash Tool"  
+tool.RequiresHandle = false  
+tool.Parent = backpack  
+
+tool.Activated:Connect(function()  
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")  
+    if hrp then hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * 5) end  
+end)
+
 end
 
--- Kích hoạt khi nhấn nút
-FastRunBtn.MouseButton1Click:Connect(function()
-    ApplyForce()
+Tab:CreateButton({Name = "Nhận Dash Tool", Callback = function() GiveDashTool() end})
+game.Players.LocalPlayer.CharacterAdded:Connect(function() task.wait(1) GiveDashTool() end)
+
+-- --- PHẦN SAVE / TP ---
+local SavedPos = nil
+local SaveTPButton
+SaveTPButton = Tab:CreateButton({
+Name = "Save Tọa độ",
+Callback = function()
+local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+if not SavedPos then
+if hrp then SavedPos = hrp.CFrame; SaveTPButton:Set("TP Đến Tọa Độ") end
+else
+if hrp then hrp.CFrame = SavedPos end
+end
+end,
+})
+
+-- --- PHẦN JUMP BOOST (Đẩy 120) ---
+local isJumpBoostEnabled = false
+Tab:CreateToggle({Name = "Jump Boost (Nhảy 120)", Callback = function(Value) isJumpBoostEnabled = Value end})
+
+game:GetService("RunService").Heartbeat:Connect(function()
+if isJumpBoostEnabled then
+local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+if hrp and hum and hum:GetState() == Enum.HumanoidStateType.Jumping then
+local look = hrp.CFrame.LookVector
+hrp.AssemblyLinearVelocity = Vector3.new(look.X * 120, hrp.AssemblyLinearVelocity.Y, look.Z * 120)
+task.wait(0.2) -- Tăng độ trễ để không làm tụt FPS
+end
+end
+end)
+-- --- PHẦN SPEED BOOST (Đẩy khi di chuyển) ---
+local isSpeedBoostEnabled = false
+
+Tab:CreateToggle({
+Name = "CHẠY NHANH",
+CurrentValue = false,
+Flag = "SpeedBoostToggle",
+Callback = function(Value)
+isSpeedBoostEnabled = Value
+end,
+})
+
+-- Sử dụng RenderStepped để đẩy liên tục khi đang chạy
+game:GetService("RunService").RenderStepped:Connect(function()
+if isSpeedBoostEnabled then
+local player = game.Players.LocalPlayer
+local char = player.Character
+local hum = char and char:FindFirstChild("Humanoid")
+local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+-- Kiểm tra nếu nhân vật đang có ý định di chuyển (MoveDirection > 0)  
+    if hum and hrp and hum.MoveDirection.Magnitude > 0 then  
+        -- Tính toán hướng di chuyển thực tế  
+        local moveDir = hum.MoveDirection  
+        -- Đẩy nhân vật với lực 80 theo hướng đang đi  
+        hrp.AssemblyLinearVelocity = Vector3.new(moveDir.X * 80, hrp.AssemblyLinearVelocity.Y, moveDir.Z * 80)  
+    end  
+end
+
 end)
 
--- Kích hoạt bằng phím tắt (Ví dụ: phím Q)
-game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.Q then
-        ApplyForce()
+-- --- TAB 2: GAME TURBO ---
+local Tab2 = Window:CreateTab("GAME TURBO", nil)
+
+Tab2:CreateButton({
+Name = "HIỆU NĂNG",
+Callback = function()
+local Lighting = game:GetService("Lighting")
+Lighting.GlobalShadows = false
+Lighting.Brightness = 2
+Lighting.ClockTime = 12
+workspace.Terrain.Decoration = false
+Rayfield:Notify({Title = "Đã tối ưu!", Content = "Đã giảm lag tối đa.", Duration = 5})
+end,
+})
+-- --- PHẦN FPS UNLOCKER ---
+local FPSSection = Tab2:CreateSection("UNLOCK FPS")
+
+local function SetFPS(limit)
+setfpscap(limit) -- Lệnh chính để mở khóa FPS
+Rayfield:Notify({
+Title = "FPS Đã cập nhật",
+Content = "Giới hạn FPS hiện tại: " .. limit,
+Duration = 3
+})
+end
+
+Tab2:CreateButton({Name = "FPS: 60", Callback = function() SetFPS(60) end})
+Tab2:CreateButton({Name = "FPS: 90", Callback = function() SetFPS(90) end})
+Tab2:CreateButton({Name = "FPS: 120", Callback = function() SetFPS(120) end})
+Tab2:CreateButton({Name = "FPS: 144", Callback = function() SetFPS(144) end})
+Tab2:CreateButton({Name = "FPS: 244", Callback = function() SetFPS(244) end})
+-- --- TAB 3: SÀN DUNG NHAM (BẢN FIX KẸT TUYỆT ĐỐI) ---
+local Tab3 = Window:CreateTab("SÀN DUNG NHAM", nil)
+
+_G.AutoLv1Enabled = false
+local TargetPos = Vector3.new(3549, 89, 741)
+
+Tab3:CreateToggle({
+Name = "Auto Lv1 (Bay & Né Lava)",
+CurrentValue = false,
+Callback = function(Value)
+_G.AutoLv1Enabled = Value
+local char = game.Players.LocalPlayer.Character
+local hum = char and char:FindFirstChild("Humanoid")
+local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+if Value then  
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Physics) end  
+    else  
+        -- 1. Trả lại trạng thái bình thường  
+        if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end  
+        for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end  
+          
+        -- 2. Đẩy cưỡng bức (Không cần kiểm tra kẹt, cứ tắt là đẩy nhẹ để thoát kẹt cứng)  
+        task.delay(0.2, function()  
+            if hrp then  
+                hrp.Velocity = Vector3.new(0, 200, 0) -- Tăng lực đẩy lên 200 cho mạnh  
+                task.wait(0.3)  
+                hrp.Velocity = Vector3.new(0, 0, 0)  
+            end  
+        end)  
+    end  
+end,
+
+})
+
+game:GetService("RunService").Heartbeat:Connect(function()
+local char = game.Players.LocalPlayer.Character
+local hrp = char and char:FindFirstChild("HumanoidRootPart")
+local hum = char and char:FindFirstChild("Humanoid")
+
+if _G.AutoLv1Enabled and hrp and hum then  
+    -- Ép xuyên tường  
+    for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end  
+      
+    -- Né Lava  
+    if hum.Health < hum.MaxHealth then  
+        hrp.Velocity = Vector3.new(0, 150, 0)  
+    else  
+        -- Bay tới tọa độ  
+        local dir = (TargetPos - hrp.Position).Unit  
+        if (TargetPos - hrp.Position).Magnitude > 5 then  
+            hrp.Velocity = dir * 120  
+        else  
+            hrp.Velocity = Vector3.new(0, 0, 0)  
+        end  
+    end  
+end
+
+end)
+-- --- TAB 4: THÔNG TIN (SỬA LỖI) ---
+local Tab4 = Window:CreateTab("Thông tin", nil) -- PHẢI CÓ DÒNG NÀY
+
+-- Section 3: Hệ thống Giám sát Server
+local SectionMonitor = Tab4:CreateSection("Giám sát Server")
+local StatusNumLabel = SectionMonitor:CreateLabel("Trạng thái: Đang khởi tạo...")
+
+local Players = game:GetService("Players")
+
+-- Hàm cập nhật trạng thái
+local function updateStatus(stateCode, message)
+    if StatusNumLabel then
+        StatusNumLabel:Update("Trạng thái: " .. stateCode .. " (" .. message .. ")")
+    end
+end
+
+-- Kiểm tra ban đầu
+local initialCount = #Players:GetPlayers()
+updateStatus(initialCount == 0 and "5" or "6", initialCount == 0 and "Server trống" or "Đang hoạt động")
+
+-- Sự kiện người vào
+Players.PlayerAdded:Connect(function()
+    updateStatus("6", "Có người vừa vào")
+    task.wait(3)
+    updateStatus("6", "Đang hoạt động")
+end)
+
+-- Sự kiện người thoát
+Players.PlayerRemoving:Connect(function()
+    local currentCount = #Players:GetPlayers()
+    if (currentCount - 1) <= 0 then
+        updateStatus("5", "Server trống")
+    else
+        updateStatus("4", "Có người vừa thoát")
+        task.wait(3)
+        updateStatus("6", "Đang hoạt động")
     end
 end)
-
-print("Script Loaded: Force Push 60 with Rounded Zero Gap GUI")
