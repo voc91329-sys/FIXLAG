@@ -41,7 +41,7 @@ end)
 
 end
 
-Tab:CreateButton({Name = "Nhận Dash Tool", Callback = function() GiveDashTool() end})
+Tab:CreateButton({Name = "NHẬN CÔNG CỤ LƯỚT", Callback = function() GiveDashTool() end})
 game.Players.LocalPlayer.CharacterAdded:Connect(function() task.wait(1) GiveDashTool() end)
 
 -- --- PHẦN SAVE / TP ---
@@ -104,50 +104,48 @@ local hrp = char and char:FindFirstChild("HumanoidRootPart")
 end
 
 end)
--- Bật/Tắt ESP
+-- TỐI ƯU ESP (CHỐNG LAG)
 local espEnabled = false
-local espConnection = nil
 
-local function updateESP()
-    -- Xóa hết các Highlight cũ trước khi làm mới
-    for _, obj in pairs(game.Workspace:GetDescendants()) do
-        if obj:IsA("Highlight") and obj.Name == "KRP_ESP" then
-            obj:Destroy()
-        end
-    end
-
+local function toggleESP()
+    espEnabled = not espEnabled
+    
     if espEnabled then
+        Rayfield:Notify({Title = "KRP HUB", Content = "Đã BẬT ESP (Tối ưu)!", Duration = 2})
+        -- Dùng task.spawn để chạy độc lập, không làm ảnh hưởng main game
+        task.spawn(function()
+            while espEnabled do
+                for _, player in pairs(game.Players:GetPlayers()) do
+                    if player.Character and not player.Character:FindFirstChild("KRP_ESP") then
+                        local highlight = Instance.new("Highlight")
+                        highlight.Name = "KRP_ESP"
+                        highlight.Parent = player.Character
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        highlight.FillTransparency = 0.5
+                    end
+                end
+                task.wait(1) -- Cập nhật mỗi 1 giây thay vì mỗi giây 60 lần
+            end
+        end)
+    else
+        -- Tắt và xóa sạch
         for _, player in pairs(game.Players:GetPlayers()) do
-            if player.Character then
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "KRP_ESP"
-                highlight.Parent = player.Character
-                highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Màu đỏ
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.FillTransparency = 0.5
+            if player.Character and player.Character:FindFirstChild("KRP_ESP") then
+                player.Character.KRP_ESP:Destroy()
             end
         end
+        Rayfield:Notify({Title = "KRP HUB", Content = "Đã TẮT ESP!", Duration = 2})
     end
 end
 
--- Nút bấm Bật/Tắt ESP
 Tab:CreateButton({
     Name = "NHÌN THẤY TẤT CẢ NGƯỜI CHƠI",
     Callback = function()
-        espEnabled = not espEnabled -- Đảo ngược trạng thái
-        
-        if espEnabled then
-            -- Bật: Chạy vòng lặp để cập nhật liên tục
-            espConnection = game:GetService("RunService").RenderStepped:Connect(updateESP)
-            Rayfield:Notify({Title = "KRP HUB", Content = "Đã BẬT ESP!", Duration = 2})
-        else
-            -- Tắt: Ngắt kết nối và xóa Highlight
-            if espConnection then espConnection:Disconnect() end
-            updateESP() -- Gọi hàm này để xóa sạch các Highlight cũ
-            Rayfield:Notify({Title = "KRP HUB", Content = "Đã TẮT ESP!", Duration = 2})
-        end
+        toggleESP()
     end
 })
+
 
 -- --- TAB 2: GAME TURBO ---
 local Tab2 = Window:CreateTab("GAME TURBO", nil)
