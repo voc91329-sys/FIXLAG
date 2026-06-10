@@ -110,68 +110,57 @@ local Tab2 = Window:CreateTab("GAME TURBO", nil)
 
 Tab2:CreateButton({
 Name = "HIỆU NĂNG",
--- Premium Bulk Eraser V9: Full Optimization
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local Terrain = workspace:FindFirstChildOfClass("Terrain")
-
-local targets = {
-    "NPC", 
-    "LimitedProductStand", 
-    "CutlassGamepassPrompt", 
-    "AttackVfx", 
-    "Regions", 
-    "Map", 
-    "AnimatedModel"
-}
-
-local function DeepBulkDelete()
-    setfpscap(120) -- Ép 120 FPS
-    
-    -- 1. Ép vật liệu về 0.01%
-    if Terrain then
-        Terrain.WaterWaveSize = 0.01
-        Terrain.WaterWaveSpeed = 0.01
-        Terrain.WaterReflectance = 0.01
-        Terrain.WaterTransparency = 0.01
-    end
-
-    -- 2. Giảm đồ họa 80% (Tắt đổ bóng và giảm chất lượng chi tiết)
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    Lighting.GlobalShadows = false
-    Lighting.Brightness = 0
-
-    -- 3. Xóa xương mù & Bầu trời
-    Lighting.FogEnd = 999999
-    for _, obj in pairs(Lighting:GetChildren()) do
-        if obj:IsA("Sky") or obj:IsA("Atmosphere") or obj:IsA("BloomEffect") or 
-           obj:IsA("DepthOfFieldEffect") or obj:IsA("SunRaysEffect") then
-            obj:Destroy()
-        end
-    end
-
-    -- 4. Xóa danh sách vật thể gây lag (Đã loại bỏ Base và Model)
-    local count = 0
-    for _, obj in pairs(workspace:GetDescendants()) do
-        for _, name in pairs(targets) do
-            if obj.Name == name then
-                obj:Destroy()
-                count += 1
-                break
+Callback = function()
+        -- 1. Ép đồ họa và vật liệu
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            local Lighting = game:GetService("Lighting")
+            Lighting.GlobalShadows = false
+            Lighting.Brightness = 0
+            
+            local Terrain = workspace:FindFirstChildOfClass("Terrain")
+            if Terrain then
+                Terrain.WaterWaveSize = 0.01
+                Terrain.WaterWaveSpeed = 0.01
+                Terrain.WaterReflectance = 0
+                Terrain.WaterTransparency = 0
             end
-        end
+        end)
+
+        -- 2. Xóa Bầu trời, Xương mù, Hiệu ứng trang trí
+        pcall(function()
+            local Lighting = game:GetService("Lighting")
+            Lighting.FogEnd = 999999
+            for _, obj in pairs(Lighting:GetChildren()) do
+                if obj:IsA("Sky") or obj:IsA("Atmosphere") or obj:IsA("BloomEffect") or 
+                   obj:IsA("DepthOfFieldEffect") or obj:IsA("SunRaysEffect") then
+                    obj:Destroy()
+                end
+            end
+        end)
+
+        -- 3. Xóa vật thể Map, NPC, VFX, Rác
+        pcall(function()
+            local targets = {"NPC", "LimitedProductStand", "CutlassGamepassPrompt", "AttackVfx", "Regions", "Map", "AnimatedModel", "ParticleEmitter", "Trail", "Fire", "Smoke"}
+            for _, name in pairs(targets) do
+                local found = workspace:FindFirstChild(name, true)
+                if found then found:Destroy() end
+            end
+            -- Quét sạch rác phụ
+            for _, child in pairs(workspace:GetDescendants()) do
+                if child:IsA("ParticleEmitter") or child:IsA("Trail") or child:IsA("Fire") or child:IsA("Smoke") then
+                    child:Destroy()
+                end
+            end
+        end)
+
+        Rayfield:Notify({
+            Title = "KRP HUB", 
+            Content = "Đã tối ưu toàn diện và dọn sạch Map!", 
+            Duration = 5
+        })
     end
-    print("--- DỌN DẸP HOÀN TẤT: Đã xóa " .. count .. " vật thể ---")
-end
-
--- Tự động chạy lại khi nhân vật hồi sinh
-game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    DeepBulkDelete()
-end)
-
--- Chạy lần đầu
-DeepBulkDelete()
+})
 
 
 -- --- PHẦN FPS UNLOCKER ---
