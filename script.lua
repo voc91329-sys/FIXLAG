@@ -252,3 +252,56 @@ game:GetService(LUAOBFUSACTOR_DECRYPT_STR_0("\139\54\165\71\186\173\83\189\186\3
 		end
 	end
 end);
+        task.wait(0.5) 
+        
+        -- Bay tới tọa độ 99.49, -70.50, 19.37
+        FlyTo(Vector3.new(99.49, -70.50, 19.37)) 
+        
+        Rayfield:Notify({Title = "KRP HUB", Content = "Đã tới đích cuối!", Duration = 2})
+    end
+})
+-- Ví dụ: Khi nào bro muốn thêm nút vào Tab 4 thì chỉ cần viết thế này:
+Tab4:CreateButton({
+    Name = "game slap tower",
+    Callback = function()
+        -- Code của bro ở đây
+    end
+})
+local TweenService = game:GetService("TweenService")
+local player = game.Players.LocalPlayer
+
+-- Hàm bay chung tối ưu
+local function FlyTo(targetPosition)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+
+    if hrp and hum then
+        hum:ChangeState(Enum.HumanoidStateType.Physics)
+        hrp.Anchored = true
+        
+        local distance = (hrp.Position - targetPosition).Magnitude
+        local speed = 60
+        local timeToTravel = distance / speed
+        
+        local tweenInfo = TweenInfo.new(timeToTravel, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPosition)})
+        
+        tween:Play()
+        tween.Completed:Wait()
+        
+        hrp.Anchored = false
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end
+
+-- Logic Nhảy vô hạn (Giữ lại nếu bro cần dùng)
+local isInfiniteJumpEnabled = false
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if isInfiniteJumpEnabled then
+        local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum:ChangeState("Jumping")
+        end
+    end
+end)
